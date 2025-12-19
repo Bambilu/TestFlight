@@ -12,7 +12,7 @@ public class FlightDataClient {
     public static void main(String[] args) throws Exception {
         // Define service location
         URL wsdlURL = new URL("http://localhost:8080/FlightDataService?wsdl");
-        QName SERVICE_NAME = new QName("http://example.com/", "FlightDataServiceImplService");
+        QName SERVICE_NAME = new QName("http://example.com/flightdata", "FlightDataServiceImplService");
 
         // Create service instance
         javax.xml.ws.Service service = javax.xml.ws.Service.create(wsdlURL, SERVICE_NAME);
@@ -31,16 +31,13 @@ public class FlightDataClient {
         while (!readStatus.getStatus().equals("COMPLETED") && !readStatus.getStatus().equals("FAILED")) {
             Thread.sleep(2000);
             readStatus = port.checkTaskStatus(readStatus.getTaskId());
-            System.out.println("Progress: " + readStatus.getProgress() + "%");
+            System.out.println("Analysis ID: " + readStatus.getAnalysisId() + " Progress: " + readStatus.getProgress() + "%");
         }
 
         if (readStatus.getStatus().equals("COMPLETED")) {
-            // Get analysis ID from the response or logs
-            String analysisId = "ANALYSIS_MISSION_001_" + System.currentTimeMillis();
-
             // Step 2: Retrieve and display results
             System.out.println("\nRetrieving analysis results...");
-            AnalysisResults results = port.getAnalysisResults(analysisId);
+            AnalysisResults results = port.getAnalysisResults(readStatus.getAnalysisId());
 
             System.out.println("Analysis ID: " + results.getAnalysisId());
             System.out.println("Timestamp: " + results.getTimestamp());
@@ -56,7 +53,7 @@ public class FlightDataClient {
             // Step 3: Save updated results
             System.out.println("\nSaving updated results...");
             results.setStatus("VERIFIED");
-            TaskStatus saveStatus = port.saveAnalysisResults(analysisId, results);
+            TaskStatus saveStatus = port.saveAnalysisResults(readStatus.getAnalysisId(), results);
 
             // Wait for save to complete
             while (!saveStatus.getStatus().equals("COMPLETED") && !saveStatus.getStatus().equals("FAILED")) {

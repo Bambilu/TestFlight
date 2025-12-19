@@ -15,20 +15,24 @@ import java.util.concurrent.Executors;
 
 @WebService(
         serviceName = "FlightDataServiceImplService",
-        targetNamespace = "http://example.com/",
+        targetNamespace = "http://example.com/flightdata",
         endpointInterface = "com.nuaa.flightdata.service.FlightDataService"
 )
 public class FlightDataServiceImpl implements FlightDataService {
 
     // In-memory storage for demo purposes (use database in production)
     private final Map<String, AnalysisResults> analysisStore = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> taskMap = new ConcurrentHashMap<>();
+    private final Map<String, TaskStatus> taskStore = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     @Override
     public TaskStatus readFlightData(String missionId) {
-        String taskId = UUID.randomUUID().toString();
+        String taskId = "TASK_" + missionId + "_" + System.currentTimeMillis();
         TaskStatus status = createNewTask(taskId, "Reading flight data for mission: " + missionId);
+        // Create analysis ID based on mission ID and timestamp
+        String analysisId = "ANALYSIS_" + missionId + "_" + System.currentTimeMillis();
+        status.setAnalysisId(analysisId);
+        taskStore.put(taskId, status);
 
         executor.submit(() -> {
             try {
@@ -37,9 +41,6 @@ public class FlightDataServiceImpl implements FlightDataService {
 
                 // Simulate reading flight data (replace with actual implementation)
                 Thread.sleep(5000);
-
-                // Create analysis ID based on mission ID and timestamp
-                String analysisId = "ANALYSIS_" + missionId + "_" + System.currentTimeMillis();
 
                 // Store some sample results
                 AnalysisResults results = new AnalysisResults();
@@ -59,11 +60,9 @@ public class FlightDataServiceImpl implements FlightDataService {
                 status.setMessage("Error processing flight data: " + e.getMessage());
             } finally {
                 status.setEndTime(new Date());
-                taskMap.remove(taskId);
             }
         });
 
-        taskMap.put(taskId, true); // We only need the key for tracking
         return status;
     }
 
@@ -71,6 +70,8 @@ public class FlightDataServiceImpl implements FlightDataService {
     public TaskStatus saveAnalysisResults(String analysisId, AnalysisResults results) {
         String taskId = UUID.randomUUID().toString();
         TaskStatus status = createNewTask(taskId, "Saving analysis results: " + analysisId);
+        status.setAnalysisId(analysisId);
+        taskStore.put(taskId, status);
 
         executor.submit(() -> {
             try {
@@ -92,11 +93,9 @@ public class FlightDataServiceImpl implements FlightDataService {
                 status.setMessage("Error saving analysis results: " + e.getMessage());
             } finally {
                 status.setEndTime(new Date());
-                taskMap.remove(taskId);
             }
         });
 
-        taskMap.put(taskId, null);
         return status;
     }
 
@@ -107,23 +106,17 @@ public class FlightDataServiceImpl implements FlightDataService {
 
     @Override
     public TaskStatus checkTaskStatus(String taskId) {
-        TaskStatus status = new TaskStatus();
-        status.setTaskId(taskId);
-        status.setStartTime(new Date());
+        TaskStatus status = taskStore.get(taskId);
 
         // If we have info about this task, return it
         // Otherwise just indicate we don't know about this task
-        if (taskMap.containsKey(taskId)) {
-            status.setStatus("IN_PROGRESS");
-            status.setProgress(50);
-            status.setMessage("Task is still processing");
-        } else {
-            // Try to find completed tasks (in a real system you'd query a database)
+        if (status == null) {
+            status = new TaskStatus();
+            status.setTaskId(taskId);
             status.setStatus("UNKNOWN");
+            status.setProgress(0);
             status.setMessage("No information available for this task ID");
         }
-
-        status.setEndTime(new Date());
         return status;
     }
 

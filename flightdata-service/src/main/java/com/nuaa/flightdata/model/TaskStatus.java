@@ -6,9 +6,10 @@ import javax.xml.bind.annotation.XmlType;
 import java.util.Date;
 
 @XmlRootElement(name = "TaskStatus")
-@XmlType(propOrder = {"taskId", "status", "progress", "message", "startTime", "endTime"})
+@XmlType(propOrder = {"taskId", "analysisId", "status", "progress", "message", "startTime", "endTime"})
 public class TaskStatus {
     private String taskId;
+    private String analysisId;
     private String status; // PENDING, IN_PROGRESS, COMPLETED, FAILED
     private int progress; // percentage complete
     private String message;
@@ -26,6 +27,14 @@ public class TaskStatus {
 
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+
+    public String getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(String analysisId) {
+        this.analysisId = analysisId;
     }
 
     public String getStatus() {
